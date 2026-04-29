@@ -21,6 +21,23 @@ uvicorn server.main:app --reload --port 8480
 - Здоровье: `GET http://127.0.0.1:8480/health`
 - Документация: `http://127.0.0.1:8480/docs`
 
+## Docker
+
+PostgreSQL и MeetService в одной сети; таблицы создаются при старте приложения.
+
+```bash
+cd MeetService
+cp .env.docker.example .env
+# В .env задайте JWT_SECRET_KEY (тот же, что у ChatService). Не оставляйте changeme в проде.
+docker compose build
+docker compose up -d
+```
+
+- API: `http://127.0.0.1:8480` (порт меняется через `MEET_PORT` в `.env`)
+- Postgres на хосте: порт `5436` по умолчанию (`MEET_DB_PORT`)
+
+Остановка: `docker compose down`. Данные БД в volume `meet_postgres_data`.
+
 ## HTTP API (префикс `/api/v1`)
 
 | Метод | Путь | Описание |
