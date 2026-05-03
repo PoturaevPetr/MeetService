@@ -38,6 +38,12 @@ docker compose up -d
 
 Остановка: `docker compose down`. Данные БД в volume `meet_postgres_data`.
 
+### Телефон в той же сети, что и ПК
+
+В **ChatService** переменная `MEET_SERVICE_PUBLIC_URL` должна быть **доступна с телефона**: укажите `http://<LAN-IP вашего ПК>:8480`, а не `http://127.0.0.1:8480` (на телефоне localhost — это сам телефон). Убедитесь, что firewall пропускает порт Meet.
+
+В **нативном приложении** (Capacitor) страница грузится с **https**, поэтому незашифрованный **`ws://`** к Meet может блокироваться WebView; в ChatApp включён `android.allowMixedContent` для разработки, для продакшена надёжнее **`wss://`** на Meet за reverse proxy с валидным сертификатом.
+
 ## HTTP API (префикс `/api/v1`)
 
 | Метод | Путь | Описание |
