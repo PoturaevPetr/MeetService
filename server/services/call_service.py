@@ -14,15 +14,21 @@ def create_call(
     caller_id: uuid.UUID,
     callee_id: uuid.UUID,
     room_id: uuid.UUID | None = None,
+    media: str = "audio",
 ) -> Call:
     if caller_id == callee_id:
         raise ValueError("caller and callee must differ")
+
+    m = (media or "audio").strip().lower()
+    if m not in ("audio", "video"):
+        m = "audio"
 
     row = Call(
         caller_id=caller_id,
         callee_id=callee_id,
         status=CallStatus.ringing,
         room_id=room_id,
+        media=m,
     )
     db.add(row)
     db.commit()

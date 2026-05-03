@@ -17,6 +17,7 @@ class CallInvite(BaseModel):
     type: Literal["call.invite"] = "call.invite"
     callee_user_id: uuid.UUID
     room_id: uuid.UUID | None = None
+    media: Literal["audio", "video"] = "audio"
 
 
 class CallAccept(BaseModel):

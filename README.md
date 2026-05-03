@@ -49,7 +49,7 @@ docker compose up -d
 | Метод | Путь | Описание |
 |--------|------|-----------|
 | GET | `/config/ice-servers` | Список ICE-серверов для `RTCPeerConnection` (нужен Bearer) |
-| POST | `/calls` | Создать звонок: тело `{"peer_user_id":"<uuid>","room_id":null}` |
+| POST | `/calls` | Создать звонок: тело `{"peer_user_id":"<uuid>","room_id":null,"media":"audio"}` или `"media":"video"` (по умолчанию `audio`) |
 | GET | `/calls/{call_id}` | Статус звонка |
 
 ## WebSocket
@@ -70,7 +70,7 @@ docker compose up -d
 | `call.accept` / `call.reject` / `call.cancel` / `call.end` | управление сессией |
 | `webrtc.offer` / `webrtc.answer` / `webrtc.ice_candidate` | обмен SDP и ICE с собеседником |
 
-События входящего звонка у получателя: `call.incoming` (если онлайн по WS).
+События входящего звонка у получателя: `call.incoming` с полями `call_id`, `caller_id`, `room_id`, **`media`** (`audio` или `video`), если онлайн по WS.
 
 ## Переменные окружения
 

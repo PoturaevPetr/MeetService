@@ -106,6 +106,7 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
                 caller_id=user_id,
                 callee_id=msg.callee_user_id,
                 room_id=msg.room_id,
+                media=msg.media,
             )
         except ValueError as e:
             await websocket.send_json({"type": "error", "message": str(e)})
@@ -118,10 +119,16 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
                 "call_id": str(row.id),
                 "caller_id": str(user_id),
                 "room_id": str(row.room_id) if row.room_id else None,
+                "media": row.media,
             },
         )
         asyncio.create_task(
-            notify_chat_call_push(callee_id=msg.callee_user_id, caller_id=user_id, kind="incoming"),
+            notify_chat_call_push(
+                callee_id=msg.callee_user_id,
+                caller_id=user_id,
+                kind="incoming",
+                media=row.media,
+            ),
         )
         await websocket.send_json(
             {"type": "call.created", "call_id": str(row.id), "status": row.status.value},
@@ -175,7 +182,12 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
         )
         if isinstance(msg, CallCancel) and user_id == row.caller_id:
             asyncio.create_task(
-                notify_chat_call_push(callee_id=row.callee_id, caller_id=row.caller_id, kind="missed"),
+                notify_chat_call_push(
+                    callee_id=row.callee_id,
+                    caller_id=row.caller_id,
+                    kind="missed",
+                    media=row.media,
+                ),
             )
         return
 
@@ -194,7 +206,12 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
         )
         if caller_ended_unanswered:
             asyncio.create_task(
-                notify_chat_call_push(callee_id=row.callee_id, caller_id=row.caller_id, kind="missed"),
+                notify_chat_call_push(
+                    callee_id=row.callee_id,
+                    caller_id=row.caller_id,
+                    kind="missed",
+                    media=row.media,
+                ),
             )
         return
 

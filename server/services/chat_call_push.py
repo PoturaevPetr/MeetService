@@ -12,9 +12,16 @@ from server.settings import settings
 logger = logging.getLogger(__name__)
 
 
-async def notify_chat_call_push(*, callee_id: uuid.UUID, caller_id: uuid.UUID, kind: str) -> None:
+async def notify_chat_call_push(
+    *,
+    callee_id: uuid.UUID,
+    caller_id: uuid.UUID,
+    kind: str,
+    media: str = "audio",
+) -> None:
     """
     kind: incoming | missed
+    media: audio | video (для текста пуша при incoming)
     """
     base = (settings.CHAT_SERVICE_INTERNAL_BASE_URL or "").strip().rstrip("/")
     secret = (settings.INTERNAL_DELIVERY_SECRET or "").strip()
@@ -27,8 +34,11 @@ async def notify_chat_call_push(*, callee_id: uuid.UUID, caller_id: uuid.UUID, k
     if kind not in ("incoming", "missed"):
         logger.warning("Meet→Chat push: unknown kind %s", kind)
         return
+    m = (media or "audio").strip().lower()
+    if m not in ("audio", "video"):
+        m = "audio"
     url = f"{base}/api/internal/meet-call-push"
-    body = {"callee_id": str(callee_id), "caller_id": str(caller_id), "kind": kind}
+    body = {"callee_id": str(callee_id), "caller_id": str(caller_id), "kind": kind, "media": m}
     try:
         async with httpx.AsyncClient(timeout=12.0) as client:
             r = await client.post(url, headers={"X-Internal-Secret": secret}, json=body)
