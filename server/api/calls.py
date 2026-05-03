@@ -4,6 +4,8 @@ import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,7 @@ router = APIRouter(prefix="/calls", tags=["calls"])
 class CreateCallRequest(BaseModel):
     peer_user_id: uuid.UUID = Field(..., description="Собеседник (callee)")
     room_id: uuid.UUID | None = Field(None, description="Опционально: комната чата")
+    media: Literal["audio", "video"] = Field("audio", description="Старт: только голос или сразу с камерой")
 
 
 class CallResponse(BaseModel):
@@ -28,6 +31,7 @@ class CallResponse(BaseModel):
     callee_id: uuid.UUID
     status: str
     room_id: uuid.UUID | None
+    media: str
 
     model_config = {"from_attributes": True}
 
@@ -51,6 +55,7 @@ async def create_call(
             caller_id=user_id,
             callee_id=body.peer_user_id,
             room_id=body.room_id,
+            media=body.media,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
@@ -62,11 +67,17 @@ async def create_call(
             "call_id": str(row.id),
             "caller_id": str(user_id),
             "room_id": str(row.room_id) if row.room_id else None,
+            "media": row.media,
         },
     )
     # Клиент создаёт звонок через REST, не через WS call.invite — пуш «Входящий» только здесь.
     asyncio.create_task(
-        notify_chat_call_push(callee_id=body.peer_user_id, caller_id=user_id, kind="incoming"),
+        notify_chat_call_push(
+            callee_id=body.peer_user_id,
+            caller_id=user_id,
+            kind="incoming",
+            media=row.media,
+        ),
     )
 
     return CallResponse.model_validate(row)

@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from server.api.calls import router as calls_router
 from server.api.config import router as config_router
@@ -13,9 +14,25 @@ from server.ws.signaling_ws import router as ws_router
 import server.models.call  # noqa: F401 — регистрация моделей в metadata
 
 
+def _ensure_calls_media_column() -> None:
+    """Добавить колонку media к существующей таблице calls (create_all не меняет схему)."""
+    try:
+        insp = inspect(engine)
+        if not insp.has_table("calls"):
+            return
+        cols = {c["name"] for c in insp.get_columns("calls")}
+        if "media" in cols:
+            return
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE calls ADD COLUMN media VARCHAR(16) NOT NULL DEFAULT 'audio'"))
+    except Exception:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    _ensure_calls_media_column()
     yield
 
 
