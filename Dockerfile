@@ -18,6 +18,6 @@ COPY server/ ./server/
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8480
 
-EXPOSE 8480
+EXPOSE 3638
 
 CMD ["sh", "-c", "uvicorn server.main:app --host 0.0.0.0 --port ${PORT:-8480}"]
