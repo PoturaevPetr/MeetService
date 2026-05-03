@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
+    # Пуши о звонке через ChatService (Novu FCM). База без / в конце; тот же INTERNAL_DELIVERY_SECRET, что у ChatService.
+    CHAT_SERVICE_INTERNAL_BASE_URL: str = ""
+    INTERNAL_DELIVERY_SECRET: str = ""
+
     def model_post_init(self, __context: Any) -> None:
         if self.USE_SQLITE:
             object.__setattr__(self, "DATABASE_URL", f"sqlite:///{self.SQLITE_PATH}")

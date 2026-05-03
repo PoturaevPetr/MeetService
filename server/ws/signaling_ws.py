@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from typing import Any
@@ -9,7 +10,9 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from server.auth.jwt import JwtAuthError, get_user_id_from_access_token
 from server.db.session import SessionLocal
 from server.schemas.signaling import Ping, parse_client_message
+from server.models.call import CallStatus
 from server.services import call_service
+from server.services.chat_call_push import notify_chat_call_push
 from server.settings import settings
 from server.ws.connection_manager import manager
 
@@ -91,9 +94,9 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
         CallEnd,
         CallInvite,
         CallReject,
+        WebrtcAnswer,
         WebrtcIceCandidate,
         WebrtcOffer,
-        WebrtcAnswer,
     )
 
     if isinstance(msg, CallInvite):
@@ -116,6 +119,9 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
                 "caller_id": str(user_id),
                 "room_id": str(row.room_id) if row.room_id else None,
             },
+        )
+        asyncio.create_task(
+            notify_chat_call_push(callee_id=msg.callee_user_id, caller_id=user_id, kind="incoming"),
         )
         await websocket.send_json(
             {"type": "call.created", "call_id": str(row.id), "status": row.status.value},
@@ -167,9 +173,15 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
                 "status": row.status.value,
             },
         )
+        if isinstance(msg, CallCancel) and user_id == row.caller_id:
+            asyncio.create_task(
+                notify_chat_call_push(callee_id=row.callee_id, caller_id=row.caller_id, kind="missed"),
+            )
         return
 
     if isinstance(msg, CallEnd):
+        was_ringing = row.status == CallStatus.ringing
+        caller_ended_unanswered = was_ringing and user_id == row.caller_id
         try:
             row = call_service.end_call(db, row, user_id)
         except (ValueError, PermissionError) as e:
@@ -180,6 +192,10 @@ async def _dispatch_message(db, websocket: WebSocket, user_id: uuid.UUID, msg: A
             peer,
             {"type": "call.ended", "call_id": str(row.id), "by_user_id": str(user_id)},
         )
+        if caller_ended_unanswered:
+            asyncio.create_task(
+                notify_chat_call_push(callee_id=row.callee_id, caller_id=row.caller_id, kind="missed"),
+            )
         return
 
     if isinstance(msg, WebrtcOffer):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from server.api.deps import jwt_user_id
 from server.db.session import get_db
 from server.models.call import CallStatus
 from server.services import call_service
+from server.services.chat_call_push import notify_chat_call_push
 from server.ws.connection_manager import manager
 
 router = APIRouter(prefix="/calls", tags=["calls"])
@@ -61,6 +63,10 @@ async def create_call(
             "caller_id": str(user_id),
             "room_id": str(row.room_id) if row.room_id else None,
         },
+    )
+    # Клиент создаёт звонок через REST, не через WS call.invite — пуш «Входящий» только здесь.
+    asyncio.create_task(
+        notify_chat_call_push(callee_id=body.peer_user_id, caller_id=user_id, kind="incoming"),
     )
 
     return CallResponse.model_validate(row)
